@@ -1,5 +1,3 @@
-
-
 #include "include/rcu.h"
 #include <linux/slab.h>
 
