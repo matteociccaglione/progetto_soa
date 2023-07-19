@@ -16,7 +16,7 @@ int main(){
         return 1;
     }
     while(1){
-        int ret = read(fd,buf,MSG_SIZE-1);
+        int ret = read(fd,buf,MSG_SIZE);
         if(ret==-1){
             printf("Error during read\n");
             printf("Errno: %d",errno);
