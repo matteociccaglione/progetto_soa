@@ -34,7 +34,7 @@ int main(int argc, char** argv){
     char msg[1024];
     char resp[1024];
     strcpy(msg,"Hello World!\n");
-    res = put_data(msg,strlen(msg));
+    res = put_data(msg,strlen(msg)+1);
     if(res== -ENOMEM){
         printf("There is no space in this device\n");
         exit(0);
@@ -48,7 +48,7 @@ int main(int argc, char** argv){
     printf("Sleeping...\n");
     sleep(60);
     printf("Reading with get_data\n");
-    res = get_data(res,resp,strlen(msg));
+    res = get_data(res,resp,strlen(msg)+1);
     if(res == -ENODATA){
         printf("No such data\n");
         exit(0);

@@ -34,7 +34,7 @@ int main(int argc, char **argv){
     char content[128];
     printf("Putting message %s until i get ENOMEM error\n",msg);
     while(1){
-        res = put_data(msg,strlen(msg));
+        res = put_data(msg,strlen(msg)+1);
         if(res<0){
             if(errno==ENOMEM){
                 printf("Device saturated with %d putting operations\n", count);

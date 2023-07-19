@@ -26,7 +26,7 @@ void * thread_f(void* the_arg){
     printf("Thread %d\n", the_thread);
     char msg[128];
     sprintf(msg,"%d",the_thread);
-    int res = put_data(msg,strlen(msg));
+    int res = put_data(msg,strlen(msg)+1);
     printf("Thread %d inserts in block %d\n", the_thread, res);
 }
 
