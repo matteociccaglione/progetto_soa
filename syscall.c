@@ -25,7 +25,7 @@
 #include "include/syscall.h"
 
 spinlock_t write_lock;
-int last_block_written=-1;
+int last_block_written=0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
 __SYSCALL_DEFINEx(3, _get_data, int, offset, char*, destination, size_t, size){
@@ -156,7 +156,7 @@ asmlinkage long sys_put_data(char* source, size_t size){
     }
     printk("[%s]: Taking write lock\n", MOD_NAME);
     spin_lock(&write_lock);
-    i=last_block_written+1;
+    i=last_block_written;
     if(i==md_array_size)
         i=0;
     //Iterate on array in circular behavior starting from last_block_written
@@ -176,7 +176,6 @@ asmlinkage long sys_put_data(char* source, size_t size){
     //There is no space
     if(ndx==-1){
         spin_unlock(&write_lock);
-        kfree(indexes);
         return -ENOMEM;
     }
     //Write block data and metadata

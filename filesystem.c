@@ -292,7 +292,7 @@ int fs_fill_super(struct super_block *sb, void *data, int silent){
         //read block metadata
         memcpy(&metadata,bh->b_data,sizeof(dmsgs_block));
         brelse(bh);
-        block_status[i]=0x1;
+        block_status[i]=0x0;
         // if it's a valid block, also insert it into the initial RCU list
         if (metadata.is_valid == BLK_VALID){
             pr_info("%s: Block of index %u is valid - it has timestamp %lld\n", MOD_NAME, metadata.ndx, metadata.nsec);
@@ -302,6 +302,7 @@ int fs_fill_super(struct super_block *sb, void *data, int silent){
             if (ret < 0){
                 return ret;
             }
+            block_status[i]=0x1;
         }
     }
     // signal that the device (with the file system) has been mounted
