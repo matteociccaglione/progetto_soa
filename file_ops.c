@@ -61,6 +61,12 @@ ssize_t dmsgs_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 		printk("%s: read operation must access block %d of the device",MOD_NAME, device_blk);
 
 	rcu_read_lock();
+	if(nomorercu==0x1){
+        rcu_read_unlock();
+        return -EINVAL;
+    }
+    int idx=srcu_read_lock(&ss);
+    rcu_read_unlock();
 	//session private_data are used to memorize next_ts to read
 	next_ts = (ktime_t *)filp->private_data;
 	pr_info("%s: session ts value is %lld\n", MOD_NAME, *next_ts);
@@ -106,7 +112,7 @@ ssize_t dmsgs_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 	// read the block and cache it in the buffer head
 	bh = sb_bread(filp->f_path.dentry->d_inode->i_sb, block_to_read);
 	if(!bh){
-		rcu_read_unlock();
+		srcu_read_unlock(&ss,idx);
 		return -EIO;
 	}
 
@@ -117,7 +123,7 @@ ssize_t dmsgs_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 		// the block content has not been read completely: no need to update session
 		*off += (len - ret);
 		brelse(bh);
-		rcu_read_unlock();
+		srcu_read_unlock(&ss,idx);
 		return (len - ret);
 	}
 	brelse(bh);
@@ -146,7 +152,7 @@ set_next_blk:
 	// set the offset to the beginning of data of the next valid block
 	*off = (next_el->ndx * DEFAULT_BLOCK_SIZE) + METADATA_SIZE;
 
-	rcu_read_unlock();
+	srcu_read_unlock(&ss,idx);
 	return ret;
 
 end_of_msgs:

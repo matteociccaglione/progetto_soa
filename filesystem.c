@@ -7,7 +7,6 @@
 #include <linux/version.h>
 #include <linux/timekeeping.h>
 #include <linux/string.h>
-
 #include "include/filesystem.h"
 #include "include/device.h"
 #include "include/rcu.h"
@@ -22,12 +21,15 @@ typedef enum MountingState{
     UMOUNTING = 3   //Someone is unmounting the device
 }MountingState;
 
+unsigned char nomorercu=0x0;
 
 MountingState the_state; //current state of the device
 
 spinlock_t mount_lock;  //lock for mounting state r/w access
 
-
+unsigned char block_status[NBLOCKS];
+unsigned long n_blocks_handled=0;
+struct srcu_struct ss;
 
 unsigned long the_syscall_table = 0x0;
 
@@ -277,9 +279,11 @@ int fs_fill_super(struct super_block *sb, void *data, int silent){
 
     
     md_array_size = the_file_inode->file_size / DEFAULT_BLOCK_SIZE;
+    n_blocks_handled = md_array_size;
     pr_info("%s: the device has %lu blocks\n", MOD_NAME, md_array_size);
     nr_valid_blocks = 0;
     rcu_init();
+    init_srcu_struct(&ss);
     for (i = 0; i < md_array_size; i++){
         bh = sb_bread(sb, i + 2);
         if (!bh){
@@ -287,9 +291,8 @@ int fs_fill_super(struct super_block *sb, void *data, int silent){
         }
         //read block metadata
         memcpy(&metadata,bh->b_data,sizeof(dmsgs_block));
-
         brelse(bh);
-
+        block_status[i]=0x1;
         // if it's a valid block, also insert it into the initial RCU list
         if (metadata.is_valid == BLK_VALID){
             pr_info("%s: Block of index %u is valid - it has timestamp %lld\n", MOD_NAME, metadata.ndx, metadata.nsec);
@@ -421,6 +424,11 @@ static void __exit dmsgs_exit(void){
         printk("%s: sucessfully unregistered %s driver\n",MOD_NAME, dmsgs_fs_type.name);
     else
         printk("%s: failed to unregister %s driver - error %d", MOD_NAME, dmsgs_fs_type.name, ret);
+    
+    nomorercu=0x1;
+    synchronize_rcu();
+    synchronize_srcu(&ss);
+    cleanup_srcu_struct(&ss);
 }
 
 

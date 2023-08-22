@@ -11,6 +11,7 @@
 
 extern struct list_head valid_blk_list;
 extern spinlock_t rcu_write_lock;
+extern unsigned char nomorercu;
 
 typedef struct _rcu_elem {
     uint32_t ndx;

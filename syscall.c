@@ -46,12 +46,19 @@ asmlinkage long sys_get_data(int offset, char* destination, size_t size){
     }
     printk("[%s]: looking for block with ndx = %d\n",MOD_NAME,offset);
     rcu_read_lock();
+    if(nomorercu==0x1){
+        rcu_read_unlock();
+        return -EINVAL;
+    }
+    int idx=srcu_read_lock(&ss);
+    rcu_read_unlock();
+    
     list_for_each_entry_rcu(rcu_el,&valid_blk_list,node){
         if(rcu_el->ndx == offset){
             //Block found
             bh = sb_bread(the_sb, n_block);
             if(!bh){
-		        rcu_read_unlock();
+		        srcu_read_unlock(&ss,idx);
 		        return -EIO;
 	        }
             //read at most the size of a block
@@ -71,12 +78,12 @@ asmlinkage long sys_get_data(int offset, char* destination, size_t size){
             //copy block data to user
             ret = copy_to_user(destination,bh->b_data+METADATA_SIZE,byte_to_read);
             brelse(bh);
-            rcu_read_unlock();
+            srcu_read_unlock(&ss,idx);
             return block.valid_bytes-ret;
         }
     }
     //Block was not found in the rcu_list, so it is not valid
-    rcu_read_unlock();
+    srcu_read_unlock(&ss,idx);
     printk("[%s]: attempting to return -ENODATA\n", MOD_NAME);
     return -ENODATA;
 }
@@ -92,31 +99,46 @@ asmlinkage long sys_invalidate_data(int offset){
     }
     rcu_elem *el;
     struct buffer_head *bh;
-    spin_lock(&write_lock);
+    unsigned char found=0x0;
+    rcu_read_lock();
+    if(nomorercu==0x1){
+        rcu_read_unlock();
+        return -EINVAL;
+    }
+    int idx=srcu_read_lock(&ss);
+    rcu_read_unlock();
     list_for_each_entry(el, &valid_blk_list, node){
         if (el->ndx == offset){
             // this is the element to be removed
+            spin_lock(&write_lock);
             list_del_rcu(&el->node);
-            bh = sb_bread(the_sb, offset);
-            *(bh->b_data+METADATA_SIZE-sizeof(unsigned char))=0x0;
-            mark_buffer_dirty(bh);
-            brelse(bh);
             spin_unlock(&write_lock);
-            #if FLUSH
-                printk("[%s]: Sync dirty buffer\n", MOD_NAME);
-                sync_dirty_buffer(bh);
-            #else
-                printk("[%s]: Mark buffer dirty\n", MOD_NAME);
-            #endif
+            srcu_read_unlock(&ss,idx);
             // wait for the grace period and then free the removed element
-            synchronize_rcu();
-            printk("[%s]: End of grace period\n", MOD_NAME);
+            synchronize_srcu(&ss);
             kfree(el);
-            return 0;
+            found=0x1;
+            break;
         }
     }
+    if(found==0x0){
+        srcu_read_unlock(&ss,idx);
+        return -ENODATA;
+    }
+    bh = sb_bread(the_sb, offset);
+    *(bh->b_data+METADATA_SIZE-sizeof(unsigned char))=0x0;
+    mark_buffer_dirty(bh);
+    brelse(bh);
+    spin_lock(&write_lock);
+    block_status[offset]=0x0;
     spin_unlock(&write_lock);
-    return -ENODATA;
+    #if FLUSH
+        printk("[%s]: Sync dirty buffer\n", MOD_NAME);
+        sync_dirty_buffer(bh);
+    #else
+        printk("[%s]: Mark buffer dirty\n", MOD_NAME);
+    #endif
+    return 0;
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,17,0)
@@ -129,28 +151,17 @@ asmlinkage long sys_put_data(char* source, size_t size){
     struct buffer_head *bh;
     int ndx=-1;
     int i;
-    //constructs a byte array which is used to find the first invalid block
-    unsigned char *indexes = kzalloc(sizeof(unsigned char)*NBLOCKS, GFP_KERNEL);
     if(!device_mounted){
         return -ENODEV;
     }
     printk("[%s]: Taking write lock\n", MOD_NAME);
     spin_lock(&write_lock);
-    rcu_read_lock();
-    if(!indexes){
-        spin_unlock(&write_lock);
-        return -ENOMEM;
-    }
-    list_for_each_entry_rcu(rcu_el, &valid_blk_list, node){
-        indexes[rcu_el->ndx]=0x1;
-    }
-    rcu_read_unlock();
     i=last_block_written+1;
     if(i==md_array_size)
         i=0;
     //Iterate on array in circular behavior starting from last_block_written
     while(1){
-        if(indexes[i] == 0x0){
+        if(block_status[i] == 0x0){
             ndx=i;
             break;
         }
@@ -177,6 +188,7 @@ asmlinkage long sys_put_data(char* source, size_t size){
     memcpy(bh->b_data,&block,sizeof(dmsgs_block));
     copy_from_user(bh->b_data+sizeof(dmsgs_block),source,size);
     add_valid_block_lock_safe(ndx, size, block.nsec);
+    block_status[ndx]=0x1;
     mark_buffer_dirty(bh);
     brelse(bh);
     last_block_written = ndx;
@@ -187,7 +199,6 @@ asmlinkage long sys_put_data(char* source, size_t size){
     #else
         printk("[%s]: Mark buffer dirty\n", MOD_NAME);
     #endif
-    kfree(indexes);
     return ndx;
 }
 
