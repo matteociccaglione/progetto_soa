@@ -1,0 +1,1 @@
+cmd_/media/sf_progetto_soa/the_dms.ko := ld -r -m elf_x86_64 -z noexecstack --no-warn-rwx-segments --build-id=sha1  -T arch/x86/module.lds -o /media/sf_progetto_soa/the_dms.ko /media/sf_progetto_soa/the_dms.o /media/sf_progetto_soa/the_dms.mod.o;  true

@@ -15,6 +15,7 @@ compile-all:
 	gcc invalidate_test.c -o executables/invalidate_test
 	gcc nodev_mounted_test.c -o executables/nodev_mounted_test
 	gcc vfs_read.c -o executables/vfs_read
+	gcc invalidate_all.c -o executables/invalidate_all
 clear:
 	rm -r executables
 
@@ -25,6 +26,8 @@ run-all:
 	executables/invalidate_test ${put_data} ${get_data} ${invalidate_data}
 	echo "running fill_test\n"
 	executables/fill_test ${put_data} ${get_data} ${invalidate_data}
+	echo "running invalidate_all\n"
+	executables/invalidate_all ${put_data} ${get_data} ${invalidate_data}
 
 run-nodev:
 	echo "running nodev_mounted_test\n"
@@ -41,6 +44,9 @@ run-invalidate_test:
 run-fill_test:
 	echo "running fill_test\n"
 	executables/fill_test ${put_data} ${get_data} ${invalidate_data}
+run-invalidate-all:
+	echo "running invalidate_all\n"
+	executables/invalidate_all ${put_data} ${get_data} ${invalidate_data}
 run-vfs_read:
 	echo "running vfs_read\n"
 	executables/vfs_read

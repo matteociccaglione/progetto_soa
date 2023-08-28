@@ -32,15 +32,18 @@ __SYSCALL_DEFINEx(3, _get_data, int, offset, char*, destination, size_t, size){
 #else
 asmlinkage long sys_get_data(int offset, char* destination, size_t size){
 #endif
-    if(!device_mounted){
-        return -ENODEV;
-    }
+
     int n_block = offset+2;
     int len = size;
     int ret;
     int byte_to_read;
+    dmsgs_block block;
     struct buffer_head *bh = NULL;
     rcu_elem *rcu_el;
+    int idx;
+    if(!device_mounted){
+        return -ENODEV;
+    }
     if(offset > NBLOCKS){
         return -ENOMEM;
     }
@@ -50,7 +53,7 @@ asmlinkage long sys_get_data(int offset, char* destination, size_t size){
         rcu_read_unlock();
         return -EINVAL;
     }
-    int idx=srcu_read_lock(&ss);
+    idx=srcu_read_lock(&ss);
     rcu_read_unlock();
     
     list_for_each_entry_rcu(rcu_el,&valid_blk_list,node){
@@ -65,7 +68,7 @@ asmlinkage long sys_get_data(int offset, char* destination, size_t size){
             if(len>rcu_el->valid_bytes){
                 len=rcu_el->valid_bytes;
             }
-            dmsgs_block block;
+            
             //Read block metadata
             memcpy(&block,bh->b_data,sizeof(dmsgs_block));
             //check that block is not empty
@@ -94,18 +97,20 @@ __SYSCALL_DEFINEx(1, _invalidate_data, int, offset){
 #else
 asmlinkage long sys_invalidate_data(int offset){
 #endif
-    if(!device_mounted){
-        return -ENODEV;
-    }
+
     rcu_elem *el;
     struct buffer_head *bh;
     unsigned char found=0x0;
+    int idx;
+    if(!device_mounted){
+        return -ENODEV;
+    }
     rcu_read_lock();
     if(nomorercu==0x1){
         rcu_read_unlock();
         return -EINVAL;
     }
-    int idx=srcu_read_lock(&ss);
+    idx=srcu_read_lock(&ss);
     rcu_read_unlock();
     list_for_each_entry(el, &valid_blk_list, node){
         if (el->ndx == offset){
@@ -146,7 +151,7 @@ __SYSCALL_DEFINEx(2, _put_data, char*, source, size_t, size){
 #else
 asmlinkage long sys_put_data(char* source, size_t size){
 #endif
-    rcu_elem *rcu_el;
+    int res;
     dmsgs_block block;
     struct buffer_head *bh;
     int ndx=-1;
@@ -185,7 +190,10 @@ asmlinkage long sys_put_data(char* source, size_t size){
     block.valid_bytes=size;
     block.nsec = ktime_get_real();
     memcpy(bh->b_data,&block,sizeof(dmsgs_block));
-    copy_from_user(bh->b_data+sizeof(dmsgs_block),source,size);
+    res=copy_from_user(bh->b_data+sizeof(dmsgs_block),source,size);
+    if(res!=0){
+        return -ENOBUFS;
+    }
     add_valid_block_lock_safe(ndx, size, block.nsec);
     block_status[ndx]=0x1;
     mark_buffer_dirty(bh);

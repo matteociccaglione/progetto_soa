@@ -86,6 +86,7 @@ inline void rcu_init(void){
 
 int add_blk_in_order_lock_safe(uint32_t ndx, uint32_t valid_bytes, ktime_t nsec){
     rcu_elem *el;
+    rcu_elem *prev=NULL;
     rcu_elem * new = kzalloc(sizeof(rcu_elem), GFP_KERNEL);
     if(!new){
         return -ENOMEM;
@@ -93,7 +94,7 @@ int add_blk_in_order_lock_safe(uint32_t ndx, uint32_t valid_bytes, ktime_t nsec)
     new->ndx = ndx;
     new->valid_bytes = valid_bytes;
     new->nsec = nsec;
-    rcu_elem *prev=NULL;
+    
     list_for_each_entry(el, &valid_blk_list, node){
         if(el->nsec > nsec){
             //Update rcu

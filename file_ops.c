@@ -23,6 +23,7 @@ ssize_t dmsgs_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 	uint64_t file_sz = f_inode->i_size;
 	int ret=0;
 	loff_t offset;
+	int idx;
 	uint32_t block_to_read, device_blk;
 	rcu_elem *rcu_el, *next_el;
 	ktime_t *next_ts, *old_session_metadata;
@@ -65,7 +66,7 @@ ssize_t dmsgs_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
         rcu_read_unlock();
         return -EINVAL;
     }
-    int idx=srcu_read_lock(&ss);
+    idx=srcu_read_lock(&ss);
     rcu_read_unlock();
 	//session private_data are used to memorize next_ts to read
 	next_ts = (ktime_t *)filp->private_data;
