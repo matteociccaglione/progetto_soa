@@ -1,1 +1,0 @@
-cmd_/media/sf_progetto_soa/the_dms.mod := printf '%s\n'   filesystem.o file_ops.o dir_ops.o rcu.o syscall.o | awk '!x[$$0]++ { print("/media/sf_progetto_soa/"$$0) }' > /media/sf_progetto_soa/the_dms.mod
