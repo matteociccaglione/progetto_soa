@@ -41,11 +41,12 @@ int main(int argc, char** argv){
     if (res<0){
         printf("An error has occurred during put operation\n");
         switch(res){
-            case -ENOMEM:
+            case ENOMEM:
                 printf("No space in device\n");
                 break;
-            case -ENODEV:
+            case ENODEV:
                 printf("Device not mounted\n");
+                break;
             default:
                 printf("Unhandled error\n");
         }
@@ -56,12 +57,14 @@ int main(int argc, char** argv){
     block_num=res;
     res = get_data(block_num,content,strlen(msg)+1);
     if(res<0){
-        printf("An error has occurred during put operation\n");
+        printf("An error has occurred during get operation\n");
         switch(errno){
-            case -ENODEV:
+            case ENODEV:
                 printf("Device not mounted\n");
-            case -ENODATA:
+                break;
+            case ENODATA:
                 printf("No data available for block number: %d\n",block_num);
+                break;
             default:
                 printf("Unhandled error\n");
         }
@@ -73,12 +76,14 @@ int main(int argc, char** argv){
     printf("Invalidating block number %d... \n",block_num);
     res = invalidate_data(block_num);
     if(res<0){
-        printf("An error has occurred during put operation\n");
+        printf("An error has occurred during invalidate operation\n");
         switch(errno){
-            case -ENODEV:
+            case ENODEV:
                 printf("Device not mounted\n");
-            case -ENODATA:
+                break;
+            case ENODATA:
                 printf("No data available for block number: %d\n",block_num);
+                break;
             default:
                 printf("Unhandled error\n");
         }

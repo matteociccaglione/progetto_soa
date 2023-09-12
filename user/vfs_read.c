@@ -8,7 +8,7 @@
 
 int main(){
     printf("Attempting to read the unique file\n");
-    int fd = open("mount/the_file",O_RDONLY,O_CREAT);
+    int fd = open("../mount/the_file",O_RDONLY,O_CREAT);
     char buf[MSG_SIZE];
     if(fd < 0){
         printf("Error while opening the_file\n");

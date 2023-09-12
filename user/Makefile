@@ -1,6 +1,6 @@
-put_data = $(shell cat /sys/module/the_dms/parameters/put_data_number)
-get_data = $(shell cat /sys/module/the_dms/parameters/get_data_number)
-invalidate_data = $(shell cat /sys/module/the_dms/parameters/invalidate_data_number)
+put_data ?= $(shell cat /sys/module/the_dms/parameters/put_data_number)
+get_data ?= $(shell cat /sys/module/the_dms/parameters/get_data_number)
+invalidate_data ?= $(shell cat /sys/module/the_dms/parameters/invalidate_data_number)
 
 compile-all:
 	echo "put_data_num: "
@@ -16,8 +16,10 @@ compile-all:
 	gcc nodev_mounted_test.c -o executables/nodev_mounted_test
 	gcc vfs_read.c -o executables/vfs_read
 	gcc invalidate_all.c -o executables/invalidate_all
-clear:
+	gcc client.c -o executables/client
+clean:
 	rm -r executables
+
 
 run-all:
 	echo "running concurrency_test\n"
@@ -50,5 +52,8 @@ run-invalidate-all:
 run-vfs_read:
 	echo "running vfs_read\n"
 	executables/vfs_read
+run-client:
+	echo "running client\n"
+	executables/client ${put_data} ${get_data} ${invalidate_data}
 
 	
